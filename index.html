@@ -337,6 +337,50 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--off);color:var(
 .footer-social{display:flex;gap:10px;}
 .footer-soc-btn{width:32px;height:32px;border-radius:8px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s;text-decoration:none;}
 .footer-soc-btn:hover{background:rgba(255,255,255,0.12);}
+
+/* ─── PAGINATION ─── */
+#pagination {
+  display:flex;
+  justify-content:center;
+  margin: 10px;
+}
+
+.page-btn{
+  min-width:32px;
+  height:32px;
+  padding:0 10px;
+  border:1px solid var(--border);
+  background:var(--white);
+  color:var(--text2);
+  border-radius:8px;
+  font-size:13px;
+  font-weight:500;
+  cursor:pointer;
+  transition:all .15s ease;
+}
+
+.page-btn:hover{
+  background:var(--sky);
+  border-color:var(--blue3);
+  color:var(--blue2);
+}
+
+.page-btn.active{
+  background:var(--blue2);
+  color:white;
+  border-color:var(--blue2);
+}
+
+.page-btn:disabled{
+  opacity:.4;
+  cursor:not-allowed;
+}
+
+.page-dots{
+  padding:0 6px;
+  color:var(--text3);
+  font-size:12px;
+}
 </style>
 </head>
 <body>
@@ -489,13 +533,14 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--off);color:var(
               <th>Tipo</th>
               <th>Fecha remate</th>
               <th>Postura mínima</th>
-              <th>Acciones</th>
+              <th></th>
             </tr>
           </thead>
           <tbody id="table-body">
             <tr><td colspan="5"><div class="empty"><div class="empty-icon">⏳</div><div class="empty-title">Cargando remates...</div></div></td></tr>
           </tbody>
         </table>
+        <div id="pagination" style="margin-top:10px; display:flex; gap:10px; align-items:center;"></div>
       </div>
     </div>
   </div>
@@ -939,27 +984,113 @@ function typeTag(tipo){
   };
   return `<span class="type-tag ${map[tipo]||'tt-otro'}">${tipo}</span>`;
 }
-
+let currentPage = 1;
+const rowsPerPage = 10;
 function renderTable(){
   const tbody = document.getElementById('table-body');
+
+  const start = (currentPage - 1) * rowsPerPage;
+  const end = start + rowsPerPage;
+  const pageData = filteredData.slice(start, end);
+
   document.getElementById('result-count').textContent = filteredData.length;
+
   if(!filteredData.length){
     tbody.innerHTML=`<tr><td colspan="5"><div class="empty"><div class="empty-icon">🔍</div><div class="empty-title">Sin resultados</div><div class="empty-sub">Intenta con otros filtros</div></div></td></tr>`;
     return;
   }
-  tbody.innerHTML = filteredData.map(r =>`
+
+  tbody.innerHTML = pageData.map(r =>`
     <tr onclick="openFicha(${r.id})">
-      <td><div class="prop-cell"><div class="prop-name">${r.direccion.split(",")[0].trim().charAt(0).toUpperCase() + r.direccion.split(",")[0].trim().slice(1)}</div><div class="prop-commune">${r.comuna}${r.region?', '+r.region:''}</div></div></td>
+      <td>
+        <div class="prop-cell">
+          <div class="prop-name">
+            ${r.direccion.split(",")[0].trim().charAt(0).toUpperCase() + r.direccion.split(",")[0].trim().slice(1)}
+          </div>
+          <div class="prop-commune">
+            ${r.comuna}${r.region?', '+r.region:''}
+          </div>
+        </div>
+      </td>
       <td>${typeTag(r.tipo)}</td>
       <td><span style="font-size:12px;font-weight:600;font-family:monospace;color:var(--text2);">${r.fecha_remate}</span></td>
-      <td><div class="price-uf">${r.precio_uf} UF</div><div class="price-clp">${r.precio_clp}</div></td>
-      <td><div style="display:flex;gap:6px;">
-        <button class="btn-ficha" onclick="event.stopPropagation();openFicha(${r.id})">Ver ficha</button>
-        <button class="btn-asesoria" onclick="event.stopPropagation();openModal('modal-asesoria')">Asesoría</button>
-      </div></td>
+      <td>
+        <div class="price-uf">${r.precio_uf} UF</div>
+        <div class="price-clp">${r.precio_clp}</div>
+      </td>
+      <td>
+        <div style="display:flex;gap:6px;">
+          <button class="btn-ficha" onclick="event.stopPropagation();openFicha(${r.id})">Ver ficha</button>
+          <button class="btn-asesoria" onclick="event.stopPropagation();openModal('modal-asesoria')">Asesoría</button>
+        </div>
+      </td>
     </tr>
   `).join('');
+
+  renderPagination();
 }
+function renderPagination() {
+  const totalPages = Math.ceil(filteredData.length / rowsPerPage);
+  const container = document.getElementById("pagination");
+
+  if (totalPages <= 1) {
+    container.innerHTML = "";
+    return;
+  }
+
+  let pages = [];
+
+  // lógica: mostrar máx 5 páginas alrededor
+  let start = Math.max(1, currentPage - 2);
+  let end = Math.min(totalPages, currentPage + 2);
+
+  if (start > 1) {
+    pages.push(1);
+    if (start > 2) pages.push("...");
+  }
+
+  for (let i = start; i <= end; i++) {
+    pages.push(i);
+  }
+
+  if (end < totalPages) {
+    if (end < totalPages - 1) pages.push("...");
+    pages.push(totalPages);
+  }
+
+  container.innerHTML = `
+    <button class="page-btn" onclick="prevPage()" ${currentPage === 1 ? "disabled" : ""}>‹</button>
+
+    ${pages.map(p => 
+      p === "..."
+        ? `<span class="page-dots">...</span>`
+        : `<button class="page-btn ${p === currentPage ? "active" : ""}" onclick="goToPage(${p})">${p}</button>`
+    ).join("")}
+
+    <button class="page-btn" onclick="nextPage()" ${currentPage === totalPages ? "disabled" : ""}>›</button>
+  `;
+}
+function goToPage(page) {
+  currentPage = page;
+  renderTable();
+  window.scrollTo({ top: 0, behavior: "smooth" }); // 👈 UX pro
+}
+
+function nextPage() {
+  const totalPages = Math.ceil(filteredData.length / rowsPerPage);
+  if (currentPage < totalPages) {
+    currentPage++;
+    renderTable();
+  }
+}
+
+function prevPage() {
+  if (currentPage > 1) {
+    currentPage--;
+    renderTable();
+  }
+}
+
 
 function applyFilters(){
   const region = document.getElementById('f-region').value;
