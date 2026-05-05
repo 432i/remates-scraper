@@ -1,13 +1,23 @@
 from fastapi import FastAPI
 import requests
 import time
+from fastapi.middleware.cors import CORSMiddleware
 
 cache = None
 last_fetch = 0
 
 
 app = FastAPI()
-
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "http://localhost:5500",
+        "https://mipropiedadchile.cl"
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 URL = "https://www.rematesinmobiliarios.cl/api-remates.php"
 
 @app.get("/remates")
