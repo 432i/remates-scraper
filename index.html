@@ -843,69 +843,99 @@ body{font-family:'Plus Jakarta Sans',sans-serif;background:var(--off);color:var(
 <script>
 // ─── DATA REMATES ───
 ////////////
+
+async function getUF() {
+  const res = await fetch("https://mindicador.cl/api/uf");
+  const data = await res.json();
+  return data.serie[0].valor;
+}
+
+function formatCLP(value) {
+  if (!value) return "";
+  return "$" + value.toLocaleString("es-CL");
+}
+
+function formatFecha(fecha) {
+  if (!fecha) return "";
+  const d = new Date(fecha);
+
+  return d.toLocaleDateString("es-CL", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric"
+  });
+}
+
+function capitalize(text) {
+  if (!text) return "";
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
+let DATA = [];
+let filteredData = [];
 async function loadData() {
   try {
-    const url = "https://www.rematesinmobiliarios.cl/api-remates.php";
+    const [resRemates, uf] = await Promise.all([
+      fetch("https://remates-scraper.onrender.com/remates"),
+      getUF()
+    ]);
 
-    const res = await fetch(`https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`);
-    const data = await res.json();
+    const raw = await resRemates.json();
 
-    console.log(data);
+    DATA = raw.map((item, index) => {
+      const precioCLP = item.valor_clp || 0;
+      const minimoCLP = item.minimo_postura || 0;
 
-    let id = 1;
+      const precioUF = precioCLP ? Math.round(precioCLP / uf) : "";
+      const minimoUF = minimoCLP ? Math.round(minimoCLP / uf) : "";
 
-    data.forEach(item => {
-      const obj = {
-        id: id++,
-        tipo: item.tipo || "",
+      return {
+        id: index + 1,
+        tipo: capitalize(item.tipo_propiedad),
+
         region: item.region || "",
         comuna: item.comuna || "",
-        direccion: item.direccion || "",
-        metros2: item.metros2 || "",
-        habitaciones: item.habitaciones || "",
-        precio_uf: item.precio_uf || "",
-        precio_clp: item.precio_clp || "",
-        fecha_remate: item.fecha_remate || "",
-        avaluo_comercial_uf: item.avaluo_comercial_uf || "",
-        postura_min_uf: item.postura_min_uf || ""
+
+        direccion: item.direccion_inmueble || item.direccion_google || "",
+
+        metros2: item.superficie || "",
+        habitaciones: "",
+
+        precio_uf: precioUF,
+        precio_clp: formatCLP(precioCLP),
+
+        fecha_remate: formatFecha(item.fecha_remate),
+
+        avaluo_comercial_uf: "",
+        postura_min_uf: minimoUF
       };
-
-      const div = document.createElement("div");
-      div.innerHTML = `
-        <h3>${obj.tipo} - ${obj.comuna}</h3>
-        <p>${obj.direccion}</p>
-        <p>${obj.precio_uf} | ${obj.precio_clp}</p>
-        <p>${obj.metros2} m² | ${obj.habitaciones} hab</p>
-        <p>Remate: ${obj.fecha_remate}</p>
-        <hr/>
-      `;
-
-      container.appendChild(div);
     });
 
   } catch (err) {
     console.error("Error cargando datos:", err);
+    DATA = [
+      {id:1,tipo:'Departamento',region:'Metropolitana',comuna:'Ñuñoa',direccion:'Av. Irarrázaval 2850',metros2:'62',habitaciones:2,precio_uf:1820,precio_clp:'$70.000.000',fecha_remate:'15 Jul 2025',avaluo_comercial_uf:2100,postura_min_uf:1820},
+      {id:2,tipo:'Departamento',region:'Metropolitana',comuna:'Providencia',direccion:'Av. Providencia 1940',metros2:'48',habitaciones:1,precio_uf:2100,precio_clp:'$80.750.000',fecha_remate:'22 Jul 2025',avaluo_comercial_uf:2600,postura_min_uf:2100},
+      {id:3,tipo:'Casa',region:'Metropolitana',comuna:'Maipú',direccion:'Calle Los Aromos 456',metros2:'90',habitaciones:3,precio_uf:1250,precio_clp:'$48.000.000',fecha_remate:'8 Jul 2025',avaluo_comercial_uf:1700,postura_min_uf:1250},
+      {id:4,tipo:'Departamento',region:'Metropolitana',comuna:'Santiago',direccion:'San Martín 340',metros2:'38',habitaciones:1,precio_uf:950,precio_clp:'$36.500.000',fecha_remate:'28 Jul 2025',avaluo_comercial_uf:1250,postura_min_uf:950},
+      {id:5,tipo:'Local comercial',region:'Metropolitana',comuna:'Las Condes',direccion:'Av. Apoquindo 5000',metros2:'55',habitaciones:0,precio_uf:3200,precio_clp:'$123.000.000',fecha_remate:'5 Ago 2025',avaluo_comercial_uf:4100,postura_min_uf:3200},
+      {id:6,tipo:'Casa',region:'Valparaíso',comuna:'Viña del Mar',direccion:'Av. España 2100',metros2:'120',habitaciones:4,precio_uf:2800,precio_clp:'$107.600.000',fecha_remate:'18 Jul 2025',avaluo_comercial_uf:3400,postura_min_uf:2800},
+      {id:7,tipo:'Departamento',region:'Metropolitana',comuna:'Ñuñoa',direccion:'Santa Rosa 1480',metros2:'55',habitaciones:2,precio_uf:1650,precio_clp:'$63.400.000',fecha_remate:'20 Jul 2025',avaluo_comercial_uf:2000,postura_min_uf:1650},
+      {id:8,tipo:'Departamento',region:'Metropolitana',comuna:'Ñuñoa',direccion:'Exequiel Fernández 350',metros2:'70',habitaciones:3,precio_uf:2050,precio_clp:'$78.800.000',fecha_remate:'25 Jul 2025',avaluo_comercial_uf:2500,postura_min_uf:2050},
+      {id:9,tipo:'Sitio',region:'Biobío',comuna:'Concepción',direccion:'Calle Bio Bio 900',metros2:'200',habitaciones:0,precio_uf:600,precio_clp:'$23.000.000',fecha_remate:'10 Ago 2025',avaluo_comercial_uf:900,postura_min_uf:600},
+    ];
   }
+
+  filteredData = [...DATA];
+  
+  renderTable()
 }
 
-loadData(); 
-const DATA = [
-  {id:1,tipo:'Departamento',region:'Metropolitana',comuna:'Ñuñoa',direccion:'Av. Irarrázaval 2850',metros2:'62',habitaciones:2,precio_uf:'1.820',precio_clp:'$70.000.000',fecha_remate:'15 Jul 2025',avaluo_comercial_uf:2100,postura_min_uf:1820},
-  {id:2,tipo:'Departamento',region:'Metropolitana',comuna:'Providencia',direccion:'Av. Providencia 1940',metros2:'48',habitaciones:1,precio_uf:'2.100',precio_clp:'$80.750.000',fecha_remate:'22 Jul 2025',avaluo_comercial_uf:2600,postura_min_uf:2100},
-  {id:3,tipo:'Casa',region:'Metropolitana',comuna:'Maipú',direccion:'Calle Los Aromos 456',metros2:'90',habitaciones:3,precio_uf:'1.250',precio_clp:'$48.000.000',fecha_remate:'8 Jul 2025',avaluo_comercial_uf:1700,postura_min_uf:1250},
-  {id:4,tipo:'Departamento',region:'Metropolitana',comuna:'Santiago',direccion:'San Martín 340',metros2:'38',habitaciones:1,precio_uf:'950',precio_clp:'$36.500.000',fecha_remate:'28 Jul 2025',avaluo_comercial_uf:1250,postura_min_uf:950},
-  {id:5,tipo:'Local comercial',region:'Metropolitana',comuna:'Las Condes',direccion:'Av. Apoquindo 5000',metros2:'55',habitaciones:0,precio_uf:'3.200',precio_clp:'$123.000.000',fecha_remate:'5 Ago 2025',avaluo_comercial_uf:4100,postura_min_uf:3200},
-  {id:6,tipo:'Casa',region:'Valparaíso',comuna:'Viña del Mar',direccion:'Av. España 2100',metros2:'120',habitaciones:4,precio_uf:'2.800',precio_clp:'$107.600.000',fecha_remate:'18 Jul 2025',avaluo_comercial_uf:3400,postura_min_uf:2800},
-  {id:7,tipo:'Departamento',region:'Metropolitana',comuna:'Ñuñoa',direccion:'Santa Rosa 1480',metros2:'55',habitaciones:2,precio_uf:'1.650',precio_clp:'$63.400.000',fecha_remate:'20 Jul 2025',avaluo_comercial_uf:2000,postura_min_uf:1650},
-  {id:8,tipo:'Departamento',region:'Metropolitana',comuna:'Ñuñoa',direccion:'Exequiel Fernández 350',metros2:'70',habitaciones:3,precio_uf:'2.050',precio_clp:'$78.800.000',fecha_remate:'25 Jul 2025',avaluo_comercial_uf:2500,postura_min_uf:2050},
-  {id:9,tipo:'Sitio',region:'Biobío',comuna:'Concepción',direccion:'Calle Bio Bio 900',metros2:'200',habitaciones:0,precio_uf:'600',precio_clp:'$23.000.000',fecha_remate:'10 Ago 2025',avaluo_comercial_uf:900,postura_min_uf:600},
-];
-
-let filteredData = [...DATA];
+loadData();
 
 function typeTag(tipo){
   const map={
-    'Departamento':'tt-depto','Casa':'tt-casa','Sitio':'tt-sitio','Local comercial':'tt-local','Oficina':'tt-local'
+    'Departamento':'tt-depto','Casa':'tt-casa','Condominio':'tt-casa','Inmueble':'tt-casa','Propiedad':'tt-casa','Vivienda':'tt-casa', 'Predio agrícola':'tt-sitio','Sitio':'tt-sitio','Lote':'tt-sitio', 'Parcela':'tt-sitio','Local comercial':'tt-local','Oficina':'tt-local'
   };
   return `<span class="type-tag ${map[tipo]||'tt-otro'}">${tipo}</span>`;
 }
@@ -917,9 +947,9 @@ function renderTable(){
     tbody.innerHTML=`<tr><td colspan="5"><div class="empty"><div class="empty-icon">🔍</div><div class="empty-title">Sin resultados</div><div class="empty-sub">Intenta con otros filtros</div></div></td></tr>`;
     return;
   }
-  tbody.innerHTML = filteredData.map(r=>`
+  tbody.innerHTML = filteredData.map(r =>`
     <tr onclick="openFicha(${r.id})">
-      <td><div class="prop-cell"><div class="prop-name">${r.direccion}</div><div class="prop-commune">${r.comuna}${r.region?', '+r.region:''}</div></div></td>
+      <td><div class="prop-cell"><div class="prop-name">${r.direccion.split(",")[0].trim().charAt(0).toUpperCase() + r.direccion.split(",")[0].trim().slice(1)}</div><div class="prop-commune">${r.comuna}${r.region?', '+r.region:''}</div></div></td>
       <td>${typeTag(r.tipo)}</td>
       <td><span style="font-size:12px;font-weight:600;font-family:monospace;color:var(--text2);">${r.fecha_remate}</span></td>
       <td><div class="price-uf">${r.precio_uf} UF</div><div class="price-clp">${r.precio_clp}</div></td>
@@ -941,7 +971,7 @@ function applyFilters(){
     if(region && r.region!==region) return false;
     if(comuna && r.comuna!==comuna) return false;
     if(tipo && r.tipo!==tipo) return false;
-    const uf=parseFloat(r.precio_uf.replace(/\./g,'').replace(',','.'));
+    const uf=r.precio_uf;
     if(uf<ufMin||uf>ufMax) return false;
     return true;
   });
@@ -1114,7 +1144,7 @@ function showResultados(){
       let matches = DATA.filter(r=>{
         if(aiState.tipo && r.tipo!==aiState.tipo) return false;
         if(aiState.comune && r.comuna!==aiState.comune) return false;
-        const uf = parseFloat(r.precio_uf.replace(/\./g,'').replace(',','.'));
+        const uf = r.precio_uf;
         if(aiState.presupuesto_uf<9999 && uf>aiState.presupuesto_uf) return false;
         return true;
       });
@@ -1144,7 +1174,7 @@ function showResultados(){
 
       // Construir HTML resultados
       let propRows = top3.map((r,i)=>{
-        const ufNum = parseFloat(r.precio_uf.replace(/\./g,'').replace(',','.'));
+        const ufNum = r.precio_uf;
         const descuento = Math.round((1-(ufNum/r.avaluo_comercial_uf))*100);
         return `<div class="ai-prop-row">
           <div class="ai-prop-rank">${i+1}</div>
@@ -1159,7 +1189,7 @@ function showResultados(){
 
       // Calcular totales
       const propRef = top3[0];
-      const ufPropNum = parseFloat(propRef.precio_uf.replace(/\./g,'').replace(',','.'))*38500;
+      const ufPropNum = propRef.precio_uf;
       const gastos = Math.round(ufPropNum*0.02);
       const total = Math.round(ufPropNum + gastos + remoVal);
       const fmt = n => '$'+n.toLocaleString('es-CL');
