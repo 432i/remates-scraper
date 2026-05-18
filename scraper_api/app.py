@@ -11,8 +11,7 @@ app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:5500",
-        "https://mipropiedadchile.cl"
+        "*"
     ],
     allow_credentials=True,
     allow_methods=["*"],
